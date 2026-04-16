@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>New Tab</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080d1c;
+  --glass-bg:rgba(30,40,60,0.55);
+  --glass-border:rgba(255,255,255,0.13);
+  --glass-hover:rgba(255,255,255,0.10);
+  --accent:#00d4ff;
+  --accent-glow:rgba(0,212,255,0.22);
+  --text:#e2e8f0;
+  --text-muted:#7a8fa8;
+  --r:18px;
+  --jfc:#00a4dc;
+  --blur:10px;
+  --sat:220%;
+  --glass-alpha:0.55;
+}
+[data-theme="light"]{
+  --bg:#b8c4d8;
+  --glass-bg:rgba(200,210,230,0.55);
+  --glass-border:rgba(255,255,255,0.55);
+  --glass-hover:rgba(255,255,255,0.40);
+  --text:#1a2438;
+  --text-muted:#4e607a;
+}
+html,body{width:100%;height:100%;overflow:hidden}
+body{
+  font-family:'DM Sans',sans-serif;color:var(--text);background:var(--bg);
+  background-image:
+    radial-gradient(ellipse at 10% 60%,rgba(0,212,255,0.06) 0%,transparent 55%),
+    radial-gradient(ellipse at 85% 15%,rgba(124,58,237,0.06) 0%,transparent 55%);
+}
+#bg-overlay{position:fixed;inset:0;z-index:0;background-size:cover;background-position:center;display:none}
+
+.glass{
+  background:var(--glass-bg);
+  border:1px solid var(--glass-border);
+  backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  border-radius:var(--r);
+  box-shadow:0 4px 24px rgba(0,0,0,0.18);
+}
+
+/* ── LAYOUT ── */
+.page{
+  position:relative;z-index:1;
+  display:grid;
+  grid-template-columns:390px 1fr;
+  column-gap:48px;
+  padding:22px 28px 68px;
+  height:100vh;
+}
+.left-col{display:flex;flex-direction:column;gap:14px;overflow:hidden;animation:fadeUp .5s ease both .04s}
+.right-col{display:flex;flex-direction:column;gap:18px;animation:fadeUp .5s ease both .12s;overflow:hidden}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px}
+
+/* ════ LEFT: JELLYFIN PANEL ════ */
+.jf-main{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:9px;padding:14px 18px 10px;border-bottom:1px solid var(--glass-border);flex-shrink:0}
+.jf-dot{width:8px;height:8px;border-radius:50%;background:var(--jfc);box-shadow:0 0 6px var(--jfc)}
+.cap{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.jf-scroll{flex:1;overflow-y:auto;padding:4px 12px 12px}
+.jf-group-label{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.07em;margin:10px 0 5px}
+.jf-item{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:10px;cursor:pointer;text-decoration:none;color:inherit;transition:background .18s,transform .14s;margin-bottom:2px}
+.jf-item:hover{background:var(--glass-hover);transform:translateX(4px)}
+.jf-thumb{width:78px;height:44px;border-radius:7px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.05)}
+.jf-thumb-fb{width:78px;height:44px;border-radius:7px;flex-shrink:0;background:linear-gradient(135deg,rgba(0,164,220,.20),rgba(0,60,160,.20));display:none;align-items:center;justify-content:center;font-size:18px}
+.jf-info{flex:1;min-width:0}
+.jf-title{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.jf-sub{font-size:10.5px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jf-prog{height:2px;background:rgba(255,255,255,0.07);border-radius:2px;margin-top:4px;overflow:hidden}
+.jf-prog-bar{height:100%;background:linear-gradient(90deg,var(--accent),#0088cc);border-radius:2px}
+.jf-status{text-align:center;padding:24px 14px;color:var(--text-muted);font-size:12px;line-height:1.7}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.07);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.jf-diag{margin:6px 12px 4px;padding:9px 12px;background:rgba(255,160,0,0.09);border:1px solid rgba(255,160,0,0.22);border-radius:10px;font-size:10px;color:var(--text-muted);line-height:1.7}
+.jf-diag strong{color:#ffb030;display:block;margin-bottom:2px}
+.jf-diag code{display:block;margin-top:4px;padding:4px 8px;background:rgba(0,0,0,0.25);border-radius:5px;font-family:monospace;font-size:9px;color:#aac;word-break:break-all}
+
+/* ════ LEFT: JF FAVORITES CAROUSEL ════ */
+.jf-fav{display:flex;flex-direction:column;flex-shrink:0}
+.fav-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 10px;border-bottom:1px solid var(--glass-border)}
+.fav-nav{display:flex;gap:6px}
+.fav-btn{
+  background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.10);
+  color:var(--text-muted);width:24px;height:24px;border-radius:7px;
+  cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;
+  transition:background .18s,color .18s;
+}
+.fav-btn:hover{background:rgba(255,255,255,0.14);color:var(--text)}
+.fav-track-wrap{overflow:hidden;padding:10px 12px}
+.fav-track{
+  display:flex;gap:10px;
+  transition:transform .35s cubic-bezier(.4,0,.2,1);
+  will-change:transform;
+}
+.fav-card{
+  flex-shrink:0;width:88px;
+  display:flex;flex-direction:column;gap:5px;
+  text-decoration:none;color:inherit;
+  border-radius:10px;padding:0;overflow:hidden;
+  transition:transform .18s,box-shadow .18s;
+}
+.fav-card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.fav-poster{
+  width:88px;height:130px;object-fit:cover;border-radius:10px;
+  background:linear-gradient(135deg,rgba(0,164,220,.20),rgba(0,60,160,.20));
+  display:block;
+}
+.fav-poster-fb{width:88px;height:130px;border-radius:10px;background:linear-gradient(135deg,rgba(0,164,220,.20),rgba(0,60,160,.20));display:flex;align-items:center;justify-content:center;font-size:24px}
+.fav-title{font-size:10px;font-weight:500;text-align:center;line-height:1.3;padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted)}
+
+/* ════ RIGHT TOP: WEATHER ════ */
+.weather-card{padding:16px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0}
+.weather-main{display:flex;align-items:center;gap:16px}
+.w-icon{font-size:44px;line-height:1;filter:drop-shadow(0 3px 10px rgba(0,180,255,.3))}
+.w-temp{font-family:'Syne',sans-serif;font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.w-desc{font-size:12.5px;color:var(--text-muted);margin-top:2px;text-transform:capitalize}
+.w-loc{font-size:9px;color:var(--text-muted);letter-spacing:.10em;text-transform:uppercase;margin-top:3px}
+.w-extra{display:flex;gap:12px;margin-top:6px}
+.w-ex{font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:3px}
+.reddit-pill{display:flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;color:inherit;padding:10px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.04);transition:background .18s,transform .14s,box-shadow .18s;flex-shrink:0}
+.reddit-pill:hover{background:var(--glass-hover);transform:translateY(-2px);box-shadow:0 6px 20px rgba(255,69,0,.16)}
+.reddit-pill-icon{position:relative;font-size:24px;line-height:1}
+.reddit-pill-badge{position:absolute;top:-6px;right:-9px;background:#ff4500;color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:8px;min-width:15px;height:14px;line-height:14px;text-align:center}
+.reddit-pill-karma{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:#ff4500;line-height:1}
+.reddit-pill-lbl{font-size:8px;color:var(--text-muted);letter-spacing:.09em;text-transform:uppercase}
+
+/* ════ RIGHT MID: QUICK LINKS ════ */
+.ql-outer{display:flex;justify-content:center;flex-shrink:0}
+.ql-card{padding:16px 18px;display:inline-flex;flex-direction:column;gap:11px;width:auto}
+.ql-grid{display:grid;grid-template-columns:repeat(4,111px);gap:10px}
+.ql-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:111px;height:111px;border-radius:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);cursor:pointer;text-decoration:none;color:var(--text);transition:background .18s,transform .14s,border-color .18s,box-shadow .18s}
+.ql-btn:hover{background:var(--glass-hover);border-color:var(--accent);transform:translateY(-4px);box-shadow:0 10px 26px var(--accent-glow)}
+.ql-icon{width:36px;height:36px;object-fit:contain;border-radius:7px}
+.ql-icon-fb{font-size:26px}
+.ql-label{font-size:11px;font-weight:500;color:var(--text-muted);text-align:center;line-height:1.2;transition:color .18s;width:100%}
+.ql-btn:hover .ql-label{color:var(--text)}
+
+/* ════ RIGHT BOTTOM: YOUTUBE ════ */
+.yt-card{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden}
+.yt-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 10px;border-bottom:1px solid var(--glass-border);flex-shrink:0}
+.yt-scroll{overflow-x:auto;overflow-y:hidden;padding:10px 14px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.10) transparent;flex:1}
+.yt-track{display:flex;gap:10px;width:max-content}
+.yt-item{
+  width:160px;flex-shrink:0;
+  text-decoration:none;color:inherit;
+  border-radius:11px;overflow:hidden;
+  background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);
+  transition:transform .18s,box-shadow .18s,border-color .18s;
+}
+.yt-item:hover{transform:translateY(-3px);box-shadow:0 8px 22px rgba(0,0,0,.3);border-color:rgba(255,0,0,.35)}
+.yt-thumb-wrap{position:relative;width:160px;height:90px;overflow:hidden;background:#111}
+.yt-thumb{width:100%;height:100%;object-fit:cover}
+.yt-duration{position:absolute;bottom:4px;right:5px;background:rgba(0,0,0,.78);color:#fff;font-size:9px;font-weight:600;padding:1px 4px;border-radius:4px;font-family:'Syne',sans-serif}
+.yt-info{padding:7px 8px 8px}
+.yt-ch{font-size:9px;color:#ff4444;font-weight:600;letter-spacing:.04em;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yt-title{font-size:10.5px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.yt-date{font-size:9px;color:var(--text-muted);margin-top:3px}
+.yt-status{text-align:center;padding:20px;color:var(--text-muted);font-size:12px}
+
+/* ════ SETTINGS TRIGGER ════ */
+.s-trigger{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:100;background:var(--glass-bg);border:1px solid var(--glass-border);backdrop-filter:blur(var(--blur)) saturate(var(--sat));-webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));border-radius:50px;padding:8px 22px;cursor:pointer;display:flex;align-items:center;gap:7px;font-family:'DM Sans',sans-serif;font-size:10.5px;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase;transition:background .18s,transform .18s,color .18s}
+.s-trigger:hover{background:var(--glass-hover);color:var(--text);transform:translateX(-50%) translateY(-3px)}
+
+/* ════ MODAL ════ */
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.60);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .28s}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:rgba(9,14,26,.97);border:1px solid rgba(255,255,255,0.12);border-radius:22px;width:620px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:26px 28px;transform:translateY(20px);transition:transform .32s cubic-bezier(.16,1,.3,1);scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.12) transparent}
+[data-theme="light"] .modal{background:rgba(232,240,255,.97)}
+.overlay.open .modal{transform:translateY(0)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700}
+.modal-close{background:rgba(255,255,255,.08);border:none;color:var(--text);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:background .18s}
+.modal-close:hover{background:rgba(255,255,255,.2)}
+.s-sec{margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.07)}
+.s-sec:last-of-type{border-bottom:none;margin-bottom:0}
+.s-stitle{font-family:'Syne',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.s-field{margin-bottom:9px}
+.s-lbl{font-size:11px;color:var(--text-muted);margin-bottom:3px;display:block}
+.s-inp{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);border-radius:8px;padding:7px 11px;font-family:'DM Sans',sans-serif;font-size:12.5px;color:var(--text);outline:none;transition:border-color .18s,box-shadow .18s}
+[data-theme="light"] .s-inp{background:rgba(0,0,0,.07);border-color:rgba(0,0,0,.13);color:var(--text)}
+.s-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.10)}
+.s-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+/* Sliders glassmorphism */
+.glass-sliders{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+.slider-row{display:grid;grid-template-columns:90px 1fr 42px;align-items:center;gap:10px}
+.slider-lbl{font-size:11px;color:var(--text-muted)}
+.slider-val{font-family:'Syne',sans-serif;font-size:11px;color:var(--accent);text-align:right;font-weight:600}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:4px;border-radius:4px;
+  background:rgba(255,255,255,.12);outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:14px;height:14px;border-radius:50%;
+  background:var(--accent);box-shadow:0 0 6px var(--accent-glow);cursor:pointer;
+}
+
+/* Tema + tinta */
+.theme-row{display:flex;gap:10px;align-items:flex-end}
+.theme-toggle{display:flex;gap:7px;flex:1}
+.theme-btn{flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);color:var(--text-muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;transition:all .18s}
+.theme-btn.active{border-color:var(--accent);background:rgba(0,212,255,.10);color:var(--accent)}
+.tint-field{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0}
+.tint-lbl{font-size:10px;color:var(--text-muted)}
+.tint-inp{width:38px;height:34px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:none;cursor:pointer;padding:2px}
+
+/* Import/Export */
+.io-row{display:flex;gap:8px}
+.io-btn{
+  flex:1;padding:9px 12px;border-radius:9px;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:opacity .18s,transform .14s;
+}
+.io-btn:hover{opacity:.88;transform:translateY(-1px)}
+.io-export{background:rgba(0,212,255,.12);color:var(--accent);border:1px solid rgba(0,212,255,.25)}
+.io-import{background:rgba(124,58,237,.12);color:#a78bfa;border:1px solid rgba(124,58,237,.25)}
+#import-file{display:none}
+
+/* YouTube editor */
+.yt-ch-editor{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;scrollbar-width:thin}
+.yt-ch-row{display:grid;grid-template-columns:1fr 2fr auto;gap:5px;align-items:center}
+.yt-ch-inp{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:7px;padding:6px 8px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text);outline:none;width:100%;transition:border-color .18s}
+[data-theme="light"] .yt-ch-inp{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.12)}
+.yt-ch-inp:focus{border-color:var(--accent)}
+.yt-rm{background:rgba(255,60,60,.11);border:none;color:#ff5a5a;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:11px;transition:background .18s;flex-shrink:0}
+.yt-rm:hover{background:rgba(255,60,60,.26)}
+.yt-add{background:rgba(0,212,255,.05);border:1px dashed rgba(0,212,255,.26);color:var(--accent);padding:7px;border-radius:8px;cursor:pointer;font-size:11.5px;width:100%;font-family:'DM Sans',sans-serif;transition:background .18s;margin-top:6px}
+.yt-add:hover{background:rgba(0,212,255,.13)}
+
+/* Quick links editor */
+.ql-editor-list{display:flex;flex-direction:column;gap:5px;max-height:170px;overflow-y:auto;scrollbar-width:thin}
+.ql-row{display:grid;grid-template-columns:36px 1fr 2fr auto;gap:5px;align-items:center}
+.ql-row-icon{width:36px;height:32px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden}
+.ql-inp{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:7px;padding:6px 8px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text);outline:none;width:100%;transition:border-color .18s}
+[data-theme="light"] .ql-inp{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.12)}
+.ql-inp:focus{border-color:var(--accent)}
+.ql-rm{background:rgba(255,60,60,.11);border:none;color:#ff5a5a;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:11px;transition:background .18s;flex-shrink:0}
+.ql-rm:hover{background:rgba(255,60,60,.26)}
+.ql-add{background:rgba(0,212,255,.05);border:1px dashed rgba(0,212,255,.26);color:var(--accent);padding:7px;border-radius:8px;cursor:pointer;font-size:11.5px;width:100%;font-family:'DM Sans',sans-serif;transition:background .18s;margin-top:6px}
+.ql-add:hover{background:rgba(0,212,255,.13)}
+
+.bg-lbl{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.15);border-radius:8px;padding:10px 12px;cursor:pointer;font-size:12.5px;color:var(--text-muted);transition:all .18s}
+.bg-lbl:hover{border-color:var(--accent);color:var(--accent)}
+#bg-file-input{display:none}
+.bg-clear{background:none;border:none;color:#ff5a5a;font-size:10.5px;cursor:pointer;margin-top:4px;font-family:'DM Sans',sans-serif}
+.bg-prev{margin-top:7px;max-width:100%;max-height:60px;border-radius:7px;object-fit:cover;display:none}
+.info-box{background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.20);border-radius:10px;padding:10px 13px;font-size:10.5px;color:var(--text-muted);line-height:1.75;margin-top:10px}
+.info-box strong{color:var(--accent);display:block;margin-bottom:4px}
+.info-box ol{margin-left:14px;margin-top:4px}
+.info-box code{background:rgba(0,0,0,0.25);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:9.5px;color:#7df}
+.note{font-size:10px;color:var(--text-muted);line-height:1.6}
+.save-btn{width:100%;padding:11px;margin-top:8px;background:linear-gradient(130deg,var(--accent) 0%,#006bbb 100%);border:none;border-radius:10px;color:#fff;font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;cursor:pointer;letter-spacing:.06em;transition:opacity .18s,transform .14s}
+.save-btn:hover{opacity:.9;transform:translateY(-2px)}
+</style>
+</head>
+<body>
+<div id="bg-overlay"></div>
+
+<div class="page">
+
+  <!-- ═══════ LEFT ═══════ -->
+  <div style="display:flex;flex-direction:column;gap:14px;overflow:hidden;min-height:0">
+
+    <!-- Jellyfin: in corso -->
+    <div class="jf-main glass">
+      <div class="panel-head">
+        <div class="jf-dot"></div>
+        <span class="cap">Jellyfin</span>
+      </div>
+      <div class="jf-scroll" id="jf-panel">
+        <div class="jf-status"><div class="spinner"></div><p>Connessione…</p></div>
+      </div>
+    </div>
+
+    <!-- Jellyfin: preferiti carosello -->
+    <div class="jf-fav glass">
+      <div class="fav-head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px">❤️</span>
+          <span class="cap">Preferiti</span>
+        </div>
+        <div class="fav-nav">
+          <button class="fav-btn" id="fav-prev">‹</button>
+          <button class="fav-btn" id="fav-next">›</button>
+        </div>
+      </div>
+      <div class="fav-track-wrap">
+        <div class="fav-track" id="fav-track">
+          <div class="jf-status" style="padding:14px;width:100%"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════ RIGHT ═══════ -->
+  <div class="right-col">
+
+    <!-- Meteo + Reddit -->
+    <div class="weather-card glass">
+      <div class="weather-main">
+        <div class="w-icon" id="w-icon">⏳</div>
+        <div>
+          <div class="w-temp" id="w-temp">--°</div>
+          <div class="w-desc" id="w-desc">Caricamento…</div>
+          <div class="w-loc"  id="w-loc">—</div>
+          <div class="w-extra">
+            <span class="w-ex">💧 <span id="w-hum">--</span>%</span>
+            <span class="w-ex">💨 <span id="w-wind">--</span> km/h</span>
+          </div>
+        </div>
+      </div>
+      <a class="reddit-pill" id="reddit-link" href="https://reddit.com" target="_blank">
+        <div class="reddit-pill-icon">🤖<span class="reddit-pill-badge" id="r-badge">—</span></div>
+        <div class="reddit-pill-karma" id="r-karma">—</div>
+        <div class="reddit-pill-lbl">karma</div>
+      </a>
+    </div>
+
+    <!-- Quick links -->
+    <div class="ql-outer">
+      <div class="ql-card glass">
+        <span class="cap">Accesso rapido</span>
+        <div class="ql-grid" id="ql-grid"></div>
+      </div>
+    </div>
+
+    <!-- YouTube -->
+    <div class="yt-card glass">
+      <div class="yt-head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:13px;color:#ff4444">▶</span>
+          <span class="cap">YouTube</span>
+        </div>
+      </div>
+      <div class="yt-scroll">
+        <div class="yt-track" id="yt-track">
+          <div class="yt-status"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<button class="s-trigger" id="s-trigger">⚙️&nbsp; Impostazioni</button>
+
+<!-- ═══════ MODAL ═══════ -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 class="modal-title">⚙️ Impostazioni</h2>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+
+    <!-- Import / Export -->
+    <div class="s-sec">
+      <div class="s-stitle">💾 Impostazioni</div>
+      <div class="io-row">
+        <button class="io-btn io-export" id="export-btn">⬇ Esporta JSON</button>
+        <label class="io-btn io-import" for="import-file">⬆ Importa JSON</label>
+        <input type="file" id="import-file" accept=".json">
+      </div>
+      <p class="note" style="margin-top:7px">L'immagine di sfondo non viene inclusa nell'export. Importa il file per ripristinare tutte le impostazioni su un altro browser.</p>
+    </div>
+
+    <!-- Jellyfin -->
+    <div class="s-sec">
+      <div class="s-stitle">🎬 Jellyfin</div>
+      <div class="s-row">
+        <div class="s-field">
+          <label class="s-lbl">URL Server</label>
+          <input class="s-inp" id="jf-server" placeholder="http://192.168.1.x:8096">
+        </div>
+        <div class="s-field">
+          <label class="s-lbl">API Token</label>
+          <input class="s-inp" id="jf-token" type="password" placeholder="Token API">
+        </div>
+      </div>
+      <div class="s-field">
+        <label class="s-lbl">User ID</label>
+        <input class="s-inp" id="jf-uid" placeholder="Dashboard → Utenti → clic utente → vedi URL">
+      </div>
+      <div class="info-box">
+        <strong>🔧 CORS</strong>
+        Jellyfin → Dashboard → Networking → CORS hosts → aggiungi <code>*</code> → riavvia.
+      </div>
+    </div>
+
+    <!-- Reddit -->
+    <div class="s-sec">
+      <div class="s-stitle">🤖 Reddit</div>
+      <div class="s-field">
+        <label class="s-lbl">Username</label>
+        <input class="s-inp" id="r-user" placeholder="il_tuo_username">
+      </div>
+    </div>
+
+    <!-- Meteo -->
+    <div class="s-sec">
+      <div class="s-stitle">🌤 Meteo</div>
+      <div class="s-field">
+        <label class="s-lbl">Città</label>
+        <input class="s-inp" id="w-city" placeholder="Bologna">
+      </div>
+    </div>
+
+    <!-- YouTube -->
+    <div class="s-sec">
+      <div class="s-stitle">▶ YouTube — Canali</div>
+      <p class="note" style="margin-bottom:8px">Inserisci il <strong>Channel ID</strong> di ogni canale (lo trovi nell'URL del canale: youtube.com/channel/<code>UCxxxx</code>).<br>
+      Per canali con handle (@nome) usa <a href="https://www.youtube.com/@nomeutente/about" target="_blank" style="color:var(--accent)">youtube.com/@nome/about</a> → tasto destro → Ispeziona → cerca <code>channelId</code>.</p>
+      <div class="yt-ch-editor" id="yt-editor"></div>
+      <button class="yt-add" id="yt-add">+ Aggiungi canale</button>
+    </div>
+
+    <!-- Tema + glassmorphism -->
+    <div class="s-sec">
+      <div class="s-stitle">🎨 Tema e Glassmorphism</div>
+      <div class="theme-row">
+        <div style="flex:1">
+          <div class="s-lbl">Modalità</div>
+          <div class="theme-toggle">
+            <button class="theme-btn" id="btn-dark">🌙 Dark</button>
+            <button class="theme-btn" id="btn-light">☀️ Light</button>
+          </div>
+        </div>
+        <div class="tint-field">
+          <label class="tint-lbl" for="tint-inp">Tinta box</label>
+          <input type="color" class="tint-inp" id="tint-inp" value="#1e283c">
+        </div>
+      </div>
+      <p class="note" style="margin-top:6px;margin-bottom:12px">Doppio click sul colore per tornare al default del tema.</p>
+      <div class="glass-sliders">
+        <div class="slider-row">
+          <span class="slider-lbl">Blur</span>
+          <input type="range" id="sl-blur" min="0" max="30" step="1" value="10">
+          <span class="slider-val" id="sl-blur-val">10px</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-lbl">Saturate</span>
+          <input type="range" id="sl-sat" min="100" max="300" step="5" value="220">
+          <span class="slider-val" id="sl-sat-val">220%</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-lbl">Opacità</span>
+          <input type="range" id="sl-alpha" min="5" max="90" step="1" value="55">
+          <span class="slider-val" id="sl-alpha-val">55%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sfondo -->
+    <div class="s-sec">
+      <div class="s-stitle">🖼 Sfondo</div>
+      <label class="bg-lbl" for="bg-file-input">📁 Carica immagine di sfondo…</label>
+      <input type="file" id="bg-file-input" accept="image/*">
+      <img id="bg-prev" class="bg-prev" alt="">
+      <button class="bg-clear" id="bg-clear">✕ Rimuovi sfondo</button>
+    </div>
+
+    <!-- Link rapidi -->
+    <div class="s-sec">
+      <div class="s-stitle">🔗 Link rapidi</div>
+      <div class="ql-editor-list" id="ql-editor"></div>
+      <button class="ql-add" id="ql-add">+ Aggiungi link</button>
+    </div>
+
+    <button class="save-btn" id="save-btn">Salva impostazioni</button>
+  </div>
+</div>
+
+<script>
+/* ══ IndexedDB ══ */
+const DB='nt_db6',STORE='blobs';
+let db=null;
+async function openDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB,1);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore(STORE);
+    r.onsuccess=e=>{db=e.target.result;res()};r.onerror=rej;
+  });
+}
+const dbTx=m=>db.transaction(STORE,m).objectStore(STORE);
+const dbSet=(k,v)=>new Promise((res,rej)=>{const r=dbTx('readwrite').put(v,k);r.onsuccess=res;r.onerror=rej});
+const dbGet=k=>new Promise((res,rej)=>{const r=dbTx('readonly').get(k);r.onsuccess=e=>res(e.target.result);r.onerror=rej});
+const dbDel=k=>new Promise((res,rej)=>{const r=dbTx('readwrite').delete(k);r.onsuccess=res;r.onerror=rej});
+
+/* ══ Config ══ */
+const DEF_LINKS=[
+  {label:'Gmail',     url:'https://mail.google.com'},
+  {label:'Calendar',  url:'https://calendar.google.com'},
+  {label:'YouTube',   url:'https://youtube.com'},
+  {label:'WhatsApp',  url:'https://web.whatsapp.com'},
+  {label:'GitHub',    url:'https://github.com'},
+  {label:'Spotify',   url:'https://open.spotify.com'},
+  {label:'Google',    url:'https://google.com'},
+  {label:'Wikipedia', url:'https://wikipedia.org'},
+];
+const DEF_CFG={
+  jfServer:'',jfToken:'',jfUid:'',
+  redditUser:'',weatherCity:'Bologna',
+  theme:'dark',tintColor:'',useTintColor:false,
+  glBlur:10,glSat:220,glAlpha:55,
+  ytChannels:[
+    {name:'Linus Tech Tips', id:'UCXuqSBlHAE6Xw-yeJA0Tunw'},
+    {name:'Marques Brownlee', id:'UCBcRF18a7Qf58cCRy5xuWwQ'},
+  ],
+  links:JSON.parse(JSON.stringify(DEF_LINKS))
+};
+let cfg=JSON.parse(JSON.stringify(DEF_CFG));
+function loadCfg(){try{const s=localStorage.getItem('nt6');if(s)cfg={...cfg,...JSON.parse(s)}}catch(e){}}
+function saveCfg(){localStorage.setItem('nt6',JSON.stringify(cfg))}
+
+/* ══ Export / Import ══ */
+function exportCfg(){
+  const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='newtab-settings.json';
+  a.click();URL.revokeObjectURL(a.href);
+}
+function importCfg(file){
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const imported=JSON.parse(e.target.result);
+      /* merge: mantieni struttura di default per campi mancanti */
+      cfg={...DEF_CFG,...imported};
+      saveCfg();
+      applyAll();
+      closeModal();
+      /* reload widgets */
+      fetchWeather(cfg.weatherCity);
+      fetchReddit(cfg.redditUser);
+      fetchJellyfin();
+      fetchFavorites();
+      fetchYoutube();
+      alert('✅ Impostazioni importate con successo!');
+    }catch(err){alert('❌ File non valido: '+err.message)}
+  };
+  r.readAsText(file);
+}
+
+/* ══ Glass CSS vars ══ */
+function applyGlass(){
+  const root=document.documentElement;
+  root.style.setProperty('--blur',cfg.glBlur+'px');
+  root.style.setProperty('--sat',cfg.glSat+'%');
+  /* ricostruisce --glass-bg con alpha */
+  if(cfg.useTintColor&&cfg.tintColor){
+    const rgb=hexToRgb(cfg.tintColor);
+    if(rgb){root.style.setProperty('--glass-bg',`rgba(${rgb},${cfg.glAlpha/100})`);return}
+  }
+  /* default per tema */
+  if(cfg.theme==='dark')
+    root.style.setProperty('--glass-bg',`rgba(30,40,60,${cfg.glAlpha/100})`);
+  else
+    root.style.setProperty('--glass-bg',`rgba(200,210,230,${cfg.glAlpha/100})`);
+}
+function hexToRgb(h){const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);return r?`${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}`:null}
+
+/* ══ Theme ══ */
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  document.getElementById('btn-dark').classList.toggle('active',t==='dark');
+  document.getElementById('btn-light').classList.toggle('active',t==='light');
+  applyGlass();
+}
+function applyAll(){applyTheme(cfg.theme);applyGlass();renderQL();}
+
+/* ══ BG ══ */
+let bgUrl=null;
+function applyBg(url){
+  const o=document.getElementById('bg-overlay');
+  if(url){o.style.backgroundImage=`url(${url})`;o.style.display='block'}
+  else o.style.display='none';
+}
+async function loadBg(){
+  try{
+    const blob=await dbGet('bg');
+    if(blob){bgUrl=URL.createObjectURL(blob);applyBg(bgUrl);
+      const p=document.getElementById('bg-prev');p.src=bgUrl;p.style.display='block'}
+  }catch(e){}
+}
+
+/* ══ Favicon ══ */
+function fav(url){try{return`https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`}catch(e){return null}}
+
+/* ══ Weather ══ */
+const WMO={0:['☀️','Sereno'],1:['🌤','Prevalentemente sereno'],2:['⛅','Parzialmente nuvoloso'],3:['☁️','Nuvoloso'],45:['🌫','Nebbia'],48:['🌫','Nebbia con brina'],51:['🌦','Pioggerellina'],53:['🌦','Pioggerellina'],55:['🌧','Pioggerellina intensa'],61:['🌧','Pioggia leggera'],63:['🌧','Pioggia'],65:['🌧','Pioggia intensa'],71:['🌨','Neve leggera'],73:['❄️','Neve'],75:['❄️','Neve intensa'],80:['🌦','Rovesci'],81:['🌧','Rovesci moderati'],82:['⛈','Rovesci violenti'],95:['⛈','Temporale'],96:['⛈','Grandine']};
+async function fetchWeather(city){
+  try{
+    const g=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=it`).then(r=>r.json());
+    if(!g.results?.length)throw new Error();
+    const{latitude:lat,longitude:lon,name,country}=g.results[0];
+    const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m&timezone=auto`).then(r=>r.json());
+    const c=w.current;const[icon,desc]=WMO[c.weathercode]??['🌡','--'];
+    document.getElementById('w-icon').textContent=icon;
+    document.getElementById('w-temp').textContent=`${Math.round(c.temperature_2m)}°`;
+    document.getElementById('w-desc').textContent=desc;
+    document.getElementById('w-loc').textContent=`${name}, ${country}`;
+    document.getElementById('w-hum').textContent=c.relativehumidity_2m??'--';
+    document.getElementById('w-wind').textContent=Math.round(c.windspeed_10m??0);
+  }catch(e){
+    document.getElementById('w-icon').textContent='❓';
+    document.getElementById('w-desc').textContent='Meteo non disponibile';
+    document.getElementById('w-loc').textContent=city;
+  }
+}
+
+/* ══ Reddit ══ */
+async function fetchReddit(user){
+  if(!user)return;
+  try{
+    const d=await fetch(`https://www.reddit.com/user/${user}/about.json`,{headers:{'Accept':'application/json'}}).then(r=>r.json());
+    const k=(d.data?.link_karma||0)+(d.data?.comment_karma||0);
+    document.getElementById('r-karma').textContent=k>999?`${(k/1000).toFixed(1)}k`:k;
+    document.getElementById('reddit-link').href=`https://reddit.com/user/${user}`;
+    document.getElementById('r-badge').textContent='→';
+  }catch(e){document.getElementById('r-karma').textContent='—'}
+}
+
+/* ══ Jellyfin helpers ══ */
+function jfH(tok){return{'Authorization':`MediaBrowser Client="NewTabPage", Device="Browser", DeviceId="newtab01", Version="1.0", Token="${tok}"`,'Accept':'application/json'}}
+async function jfFetch(url,h){const r=await fetch(url,{headers:h,credentials:'omit'});return{ok:r.ok,status:r.status,data:r.ok?await r.json():null}}
+
+/* ══ Jellyfin: in corso ══ */
+async function fetchJellyfin(){
+  const panel=document.getElementById('jf-panel');
+  const{jfServer:srv,jfToken:tok,jfUid:uid}=cfg;
+  if(!srv||!tok||!uid){panel.innerHTML=`<div class="jf-status"><p style="font-size:22px;margin-bottom:8px">🎬</p><p>Configura Jellyfin nelle impostazioni</p></div>`;return}
+  const base=srv.replace(/\/$/,''),h=jfH(tok);
+  panel.innerHTML=`<div class="jf-status"><div class="spinner"></div></div>`;
+  try{
+    const ping=await fetch(`${base}/System/Info/Public`,{headers:h,credentials:'omit'});
+    if(!ping.ok)throw new Error('Server non raggiungibile');
+    const ur=await fetch(`${base}/Users/${uid}`,{headers:h,credentials:'omit'});
+    if(!ur.ok){panel.innerHTML=`<div class="jf-status"><p style="font-size:18px;margin-bottom:6px">⚠️</p><p>User ID non valido (${ur.status})</p></div>`;return}
+    const imgQ='ImageTypeLimit=1&EnableImageTypes=Primary%2CThumb';
+    const[nu,rw,rec,lat]=await Promise.all([
+      jfFetch(`${base}/Shows/NextUp?UserId=${uid}&Limit=6&${imgQ}`,h),
+      jfFetch(`${base}/Users/${uid}/Items/Resume?Limit=6&MediaTypes=Video&${imgQ}`,h),
+      jfFetch(`${base}/Users/${uid}/Items?SortBy=DatePlayed&SortOrder=Descending&Recursive=true&Limit=6&${imgQ}`,h),
+      jfFetch(`${base}/Users/${uid}/Items/Latest?Limit=8&${imgQ}`,h),
+    ]);
+    const nuI=nu.data?.Items??[],rwI=rw.data?.Items??[],recI=rec.data?.Items??[];
+    const latI=Array.isArray(lat.data)?lat.data:(lat.data?.Items??[]);
+    let html='';
+    if(nuI.length){html+=`<div class="jf-group-label">▶ Prossimi episodi</div>`;nuI.forEach(it=>html+=jfCard(it,base,false))}
+    if(rwI.length){html+=`<div class="jf-group-label">⏸ Continua a guardare</div>`;rwI.forEach(it=>html+=jfCard(it,base,true))}
+    if(!nuI.length&&!rwI.length){
+      if(recI.length){html+=`<div class="jf-group-label">🕐 Visti di recente</div>`;recI.forEach(it=>html+=jfCard(it,base,false))}
+      else if(latI.length){html+=`<div class="jf-group-label">🆕 Aggiunti di recente</div>`;latI.forEach(it=>html+=jfCard(it,base,false))}
+      else html=`<div class="jf-status"><p>🟢 Connesso — libreria vuota</p><div class="jf-diag"><strong>Status</strong>NextUp:${nu.status} Resume:${rw.status} Latest:${lat.status}</div></div>`;
+    }
+    panel.innerHTML=html;
+  }catch(e){panel.innerHTML=`<div class="jf-status"><p>⚠️ ${e.message}</p></div>`}
+}
+function jfCard(it,base,prog){
+  const pct=it.UserData?.PlayedPercentage||0;
+  const title=it.SeriesName||it.Name||'—';
+  let sub=it.Type==='Episode'?`S${String(it.ParentIndexNumber||0).padStart(2,'0')}E${String(it.IndexNumber||0).padStart(2,'0')} · ${it.Name}`:String(it.ProductionYear||'');
+  const imgId=it.ImageTags?.Primary?it.Id:(it.SeriesId||it.Id);
+  const img=`${base}/Items/${imgId}/Images/Primary?maxHeight=90&quality=80`;
+  return`<a class="jf-item" href="${base}/web/index.html#!/details?id=${it.Id}" target="_blank">
+    <img class="jf-thumb" src="${img}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
+    <div class="jf-thumb-fb">🎬</div>
+    <div class="jf-info"><div class="jf-title">${title}</div><div class="jf-sub">${sub}</div>
+    ${prog&&pct>0?`<div class="jf-prog"><div class="jf-prog-bar" style="width:${pct.toFixed(1)}%"></div></div>`:''}</div>
+  </a>`;
+}
+
+/* ══ Jellyfin: Preferiti carosello ══ */
+let favItems=[],favIdx=0;
+const FAV_VISIBLE=4; /* quante card visibili */
+
+async function fetchFavorites(){
+  const track=document.getElementById('fav-track');
+  const{jfServer:srv,jfToken:tok,jfUid:uid}=cfg;
+  if(!srv||!tok||!uid){track.innerHTML=`<div class="jf-status" style="padding:12px;width:100%">Configura Jellyfin</div>`;return}
+  const base=srv.replace(/\/$/,''),h=jfH(tok);
+  track.innerHTML=`<div class="jf-status" style="padding:12px;width:100%"><div class="spinner"></div></div>`;
+  try{
+    const r=await jfFetch(`${base}/Users/${uid}/Items?Filters=IsFavorite&Recursive=true&Limit=30&ImageTypeLimit=1&EnableImageTypes=Primary`,h);
+    favItems=r.data?.Items??[];
+    if(!favItems.length){track.innerHTML=`<div class="jf-status" style="padding:12px;width:100%">Nessun preferito ❤️</div>`;return}
+    favIdx=0;renderFavCarousel(base);
+  }catch(e){track.innerHTML=`<div class="jf-status" style="padding:12px;width:100%">⚠️ Errore carosello</div>`}
+}
+
+function renderFavCarousel(base){
+  const track=document.getElementById('fav-track');
+  const{jfServer:srv}=cfg;
+  const b=base||srv.replace(/\/$/,'');
+  track.innerHTML=favItems.map(it=>{
+    const img=`${b}/Items/${it.Id}/Images/Primary?maxHeight=200&quality=85`;
+    return`<a class="fav-card" href="${b}/web/index.html#!/details?id=${it.Id}" target="_blank">
+      <img class="fav-poster" src="${img}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">
+      <div class="fav-poster-fb">🎬</div>
+      <div class="fav-title">${it.Name||'—'}</div>
+    </a>`;
+  }).join('');
+  updateFavOffset();
+}
+
+function updateFavOffset(){
+  const cardW=88+10; /* width + gap */
+  document.getElementById('fav-track').style.transform=`translateX(-${favIdx*cardW}px)`;
+}
+
+document.getElementById('fav-prev').addEventListener('click',()=>{
+  if(favIdx>0){favIdx--;updateFavOffset()}
+});
+document.getElementById('fav-next').addEventListener('click',()=>{
+  const max=Math.max(0,favItems.length-FAV_VISIBLE);
+  if(favIdx<max){favIdx++;updateFavOffset()}
+});
+
+/* ══ YouTube RSS ══
+   Usiamo allorigins.win come proxy CORS-free per i feed RSS di YouTube.
+   Ogni canale → https://www.youtube.com/feeds/videos.xml?channel_id=ID
+   Aggreghiamo tutti i feed, ordiniamo per data, mostriamo i 20 più recenti.
+*/
+async function fetchYoutube(){
+  const track=document.getElementById('yt-track');
+  if(!cfg.ytChannels?.length){
+    track.innerHTML=`<div class="yt-status">Aggiungi canali nelle impostazioni</div>`;return
+  }
+  track.innerHTML=`<div class="yt-status"><div class="spinner"></div></div>`;
+  const proxy='https://api.allorigins.win/get?url=';
+  try{
+    const results=await Promise.allSettled(
+      cfg.ytChannels.map(ch=>
+        fetch(proxy+encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?channel_id=${ch.id}`))
+          .then(r=>r.json())
+          .then(j=>{
+            const parser=new DOMParser();
+            const xml=parser.parseFromString(j.contents,'text/xml');
+            const entries=[...xml.querySelectorAll('entry')];
+            return entries.map(e=>({
+              id:e.querySelector('videoId')?.textContent||'',
+              title:e.querySelector('title')?.textContent||'',
+              channel:ch.name||(e.querySelector('author name')?.textContent||''),
+              thumb:`https://i.ytimg.com/vi/${e.querySelector('videoId')?.textContent}/mqdefault.jpg`,
+              url:`https://www.youtube.com/watch?v=${e.querySelector('videoId')?.textContent}`,
+              date:new Date(e.querySelector('published')?.textContent||0),
+            }));
+          })
+      )
+    );
+    let videos=[];
+    results.forEach(r=>{if(r.status==='fulfilled')videos=videos.concat(r.value)});
+    videos.sort((a,b)=>b.date-a.date);
+    videos=videos.slice(0,24);
+    if(!videos.length){track.innerHTML=`<div class="yt-status">Nessun video trovato</div>`;return}
+    track.innerHTML=videos.map(v=>{
+      const ago=timeAgo(v.date);
+      return`<a class="yt-item" href="${v.url}" target="_blank">
+        <div class="yt-thumb-wrap">
+          <img class="yt-thumb" src="${v.thumb}" loading="lazy" alt="">
+        </div>
+        <div class="yt-info">
+          <div class="yt-ch">${v.channel}</div>
+          <div class="yt-title">${v.title}</div>
+          <div class="yt-date">${ago}</div>
+        </div>
+      </a>`;
+    }).join('');
+  }catch(e){track.innerHTML=`<div class="yt-status">⚠️ Errore caricamento feed</div>`}
+}
+
+function timeAgo(date){
+  const s=Math.floor((Date.now()-date)/1000);
+  if(s<60)return'adesso';
+  if(s<3600)return`${Math.floor(s/60)}m fa`;
+  if(s<86400)return`${Math.floor(s/3600)}h fa`;
+  if(s<2592000)return`${Math.floor(s/86400)}g fa`;
+  if(s<31536000)return`${Math.floor(s/2592000)} mesi fa`;
+  return`${Math.floor(s/31536000)}a fa`;
+}
+
+/* ══ Quick Links ══ */
+function renderQL(){
+  document.getElementById('ql-grid').innerHTML=cfg.links.map(l=>{
+    const f=fav(l.url);
+    const icon=f?`<img class="ql-icon" src="${f}" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" alt=""><span class="ql-icon-fb" style="display:none">🔗</span>`:`<span class="ql-icon-fb">🔗</span>`;
+    return`<a class="ql-btn" href="${l.url}" target="_blank">${icon}<span class="ql-label">${l.label}</span></a>`;
+  }).join('');
+}
+
+/* ══ Settings editor helpers ══ */
+function renderQLEditor(){
+  const ed=document.getElementById('ql-editor');
+  ed.innerHTML=cfg.links.map((l,i)=>{
+    const f=fav(l.url);
+    const p=f?`<img src="${f}" style="width:20px;height:20px;border-radius:4px;object-fit:contain" alt="">`:'🔗';
+    return`<div class="ql-row" data-i="${i}">
+      <div class="ql-row-icon" id="qi${i}">${p}</div>
+      <input class="ql-inp" data-f="label" value="${l.label.replace(/"/g,'&quot;')}" placeholder="Nome">
+      <input class="ql-inp" data-f="url"   value="${l.url.replace(/"/g,'&quot;')}"   placeholder="https://…">
+      <button class="ql-rm" data-i="${i}">✕</button>
+    </div>`;
+  }).join('');
+  ed.querySelectorAll('.ql-inp').forEach(inp=>inp.addEventListener('input',e=>{
+    const i=+e.target.closest('.ql-row').dataset.i;
+    cfg.links[i][e.target.dataset.f]=e.target.value;
+    if(e.target.dataset.f==='url'){
+      const f=fav(e.target.value);
+      document.getElementById(`qi${i}`).innerHTML=f?`<img src="${f}" style="width:20px;height:20px;border-radius:4px;object-fit:contain" alt="">`:'🔗';
+    }
+  }));
+  ed.querySelectorAll('.ql-rm').forEach(b=>b.addEventListener('click',e=>{cfg.links.splice(+e.target.dataset.i,1);renderQLEditor()}));
+}
+
+function renderYtEditor(){
+  const ed=document.getElementById('yt-editor');
+  ed.innerHTML=(cfg.ytChannels||[]).map((ch,i)=>
+    `<div class="yt-ch-row" data-i="${i}">
+      <input class="yt-ch-inp" data-f="name" value="${(ch.name||'').replace(/"/g,'&quot;')}" placeholder="Nome canale">
+      <input class="yt-ch-inp" data-f="id"   value="${(ch.id||'').replace(/"/g,'&quot;')}"   placeholder="Channel ID (UCxxx…)">
+      <button class="yt-rm" data-i="${i}">✕</button>
+    </div>`
+  ).join('');
+  ed.querySelectorAll('.yt-ch-inp').forEach(inp=>inp.addEventListener('input',e=>{
+    const i=+e.target.closest('.yt-ch-row').dataset.i;
+    cfg.ytChannels[i][e.target.dataset.f]=e.target.value;
+  }));
+  ed.querySelectorAll('.yt-rm').forEach(b=>b.addEventListener('click',e=>{
+    cfg.ytChannels.splice(+e.target.dataset.i,1);renderYtEditor();
+  }));
+}
+
+/* sliders sync */
+function syncSliders(){
+  const blur=document.getElementById('sl-blur');
+  const sat=document.getElementById('sl-sat');
+  const alpha=document.getElementById('sl-alpha');
+  blur.value=cfg.glBlur;sat.value=cfg.glSat;alpha.value=cfg.glAlpha;
+  document.getElementById('sl-blur-val').textContent=cfg.glBlur+'px';
+  document.getElementById('sl-sat-val').textContent=cfg.glSat+'%';
+  document.getElementById('sl-alpha-val').textContent=cfg.glAlpha+'%';
+}
+
+function openModal(){
+  document.getElementById('jf-server').value=cfg.jfServer;
+  document.getElementById('jf-token').value=cfg.jfToken;
+  document.getElementById('jf-uid').value=cfg.jfUid;
+  document.getElementById('r-user').value=cfg.redditUser;
+  document.getElementById('w-city').value=cfg.weatherCity;
+  document.getElementById('tint-inp').value=cfg.tintColor||'#1e283c';
+  syncSliders();
+  applyTheme(cfg.theme);
+  renderQLEditor();
+  renderYtEditor();
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(){document.getElementById('overlay').classList.remove('open')}
+
+/* ══ Init ══ */
+(async()=>{
+  await openDB();
+  loadCfg();
+  applyAll();
+  await loadBg();
+  fetchWeather(cfg.weatherCity);
+  fetchReddit(cfg.redditUser);
+  fetchJellyfin();
+  fetchFavorites();
+  fetchYoutube();
+})();
+
+/* ══ Events ══ */
+document.getElementById('s-trigger').addEventListener('click',openModal);
+document.getElementById('modal-close').addEventListener('click',closeModal);
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+document.getElementById('btn-dark').addEventListener('click',()=>{cfg.theme='dark';applyTheme('dark')});
+document.getElementById('btn-light').addEventListener('click',()=>{cfg.theme='light';applyTheme('light')});
+
+/* tinta */
+document.getElementById('tint-inp').addEventListener('input',e=>{cfg.tintColor=e.target.value;cfg.useTintColor=true;applyGlass()});
+document.getElementById('tint-inp').addEventListener('dblclick',()=>{cfg.useTintColor=false;cfg.tintColor='';applyGlass();document.getElementById('tint-inp').value='#1e283c'});
+
+/* sliders live */
+['blur','sat','alpha'].forEach(name=>{
+  const el=document.getElementById('sl-'+name);
+  const val=document.getElementById('sl-'+name+'-val');
+  el.addEventListener('input',()=>{
+    const v=+el.value;
+    if(name==='blur'){cfg.glBlur=v;val.textContent=v+'px'}
+    else if(name==='sat'){cfg.glSat=v;val.textContent=v+'%'}
+    else{cfg.glAlpha=v;val.textContent=v+'%'}
+    applyGlass();
+  });
+});
+
+/* export/import */
+document.getElementById('export-btn').addEventListener('click',exportCfg);
+document.getElementById('import-file').addEventListener('change',e=>{
+  const f=e.target.files[0];if(f)importCfg(f);e.target.value='';
+});
+
+/* ql add */
+document.getElementById('ql-add').addEventListener('click',()=>{cfg.links.push({label:'Nuovo',url:'https://'});renderQLEditor()});
+
+/* yt add */
+document.getElementById('yt-add').addEventListener('click',()=>{if(!cfg.ytChannels)cfg.ytChannels=[];cfg.ytChannels.push({name:'',id:''});renderYtEditor()});
+
+/* bg */
+document.getElementById('bg-file-input').addEventListener('change',async e=>{
+  const file=e.target.files[0];if(!file)return;
+  await dbSet('bg',file);
+  if(bgUrl)URL.revokeObjectURL(bgUrl);
+  bgUrl=URL.createObjectURL(file);applyBg(bgUrl);
+  const p=document.getElementById('bg-prev');p.src=bgUrl;p.style.display='block';
+});
+document.getElementById('bg-clear').addEventListener('click',async()=>{
+  await dbDel('bg');if(bgUrl){URL.revokeObjectURL(bgUrl);bgUrl=null}
+  applyBg(null);document.getElementById('bg-prev').style.display='none';
+  document.getElementById('bg-file-input').value='';
+});
+
+/* save */
+document.getElementById('save-btn').addEventListener('click',()=>{
+  cfg.jfServer   =document.getElementById('jf-server').value.trim();
+  cfg.jfToken    =document.getElementById('jf-token').value.trim();
+  cfg.jfUid      =document.getElementById('jf-uid').value.trim();
+  cfg.redditUser =document.getElementById('r-user').value.trim();
+  cfg.weatherCity=document.getElementById('w-city').value.trim()||'Bologna';
+  const tc=document.getElementById('tint-inp').value;
+  cfg.tintColor=tc;cfg.useTintColor=!!tc;
+  saveCfg();applyAll();
+  fetchWeather(cfg.weatherCity);fetchReddit(cfg.redditUser);
+  fetchJellyfin();fetchFavorites();fetchYoutube();
+  closeModal();
+});
+</script>
+</body>
+</html>
